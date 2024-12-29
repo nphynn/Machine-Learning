@@ -1,0 +1,80 @@
+---
+title: "Naive Bayes"
+author: "Nick Phynn"
+date: "1/20/2024"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include = FALSE}
+library(caret)
+require(naivebayes)
+```
+
+
+```{r include=FALSE}
+data <- read.csv("airquality.csv")
+str(data)
+sum(is.na(data))
+unique(data$RH)
+
+library(tidyr)
+data1 <- 
+  data %>%
+  drop_na()
+sum(is.na(data1))
+```
+
+
+# Naive Bayes Classifier method will be used to train and predict the accuracy of the class variable in the airquality dataset. All the NA were removed and the class varibale was created by using the mean of RH to determine NO (< mean) and YES (> meean). 
+
+```{r}
+data1$class <- ifelse(data1$RH < mean(data1$RH), 'No', 'Yes')
+data1$class <- factor(data1$class, levels = c('No','Yes'), labels = c("No","Yes"))
+table1 <- table(data1$class)
+str(data1)
+```
+
+
+
+# Split the data into training and testing resource with training model having 6550 and testing model havinf 2807 observations respectively. 
+
+```{r}
+index <- createDataPartition(data1$class, p =0.70, list = FALSE)
+training <- data1[index,]
+valid <- data1[-index,]
+```
+
+
+# Control harness for prediction using Cross-Validated (10 fold) for control and Accuracy as metric
+
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+```
+
+# Build a Naive Bayes Model for Classification using naive_bayes
+
+## Model Training: The training model has 6550 samples with 10 predictors and 2 classes. The Accuracy and Kappa for True (97%, 94%) is greater than False (88%, 76%) with YES having a higher prior probability of 0.54 (NO = 0.46). 
+
+```{r}
+set.seed(7)
+fit.NB <- train(class~., data = training, method = "naive_bayes", trControl=control, metric=metric)
+fit.NB
+summary(fit.NB$finalModel)
+```
+
+## Model Prediction: The test results showed that model predcited 24 false positives, 59 false negatives and error rate of 0. The Naives Bayes model has an Accuracy of 97%, Kappa of 94%. 
+
+```{r}
+data.pred <- predict(fit.NB, newdata = valid)
+error.rate <- round(mean(data.pred != valid$class,2))
+cm <- confusionMatrix(as.factor(data.pred), reference = as.factor(valid$class), mode = "prec_recall")
+print(cm)
+```
+

@@ -1,0 +1,83 @@
+---
+title: "Unsupervised Learning"
+output:
+  pdf_document: default
+  html_document: default
+date: "2024-01-23"
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include = FALSE}
+#Library Load
+library(datasets)
+library(caret)
+
+if (!require('NbClust')) {
+  install.packages("NbClust", dependencies = TRUE)
+  library(NbClust)
+}
+```
+
+```{r include = FALSE}
+#Data Load
+data <- read.csv("airquality.csv")
+library(tidyr)
+data1 <- 
+  data %>%
+  drop_na()
+sum(is.na(data1))
+```
+
+
+# A sample of 9357 observation from the air quality data set was used to train an unsupervised model using `K-Means Clustering`. The dataset includes 10 variables (all integers) with rows including n/a dropped before evaluation.  
+
+```{r}
+str(data1)
+```
+
+
+# To figure out the best clustering, the `Elbow Method` below showed that `three clusters` were optimal for the for `the K-Means Clustering`.
+
+```{r}
+wssplot <- function(data1, nc=15, seed=1234){
+  wss <- (nrow(data1)-1)*sum(apply(data1,2,var))
+  for (i in 2:nc){
+    set.seed(seed)
+    wss[i] <- sum(kmeans(data1, centers=i)$withinss)}
+  plot(1:nc, wss, type="b", xlab="Number of Clusters",
+       ylab="Within groups sum of squares")
+  wss
+}
+wssplot(data1,n=5)
+```
+
+
+# `KMeans = 3` produces three sizes `3375, 366, 5616` with a within cluster sum of squares of 63.7%. (`centers = 30`, `withinss = 3` and `size = 3`.)
+
+```{r}
+kmeans <- kmeans(data1,3)
+kmeans$centers
+kmeans$withinss
+kmeans$size
+kmeans$iter
+summary(kmeans)
+```
+
+
+# The cluster dispersion is showing clear assignments as each data point is grouped in a cluster. The closeness of `Cluster 2 and 3` represents similarity in the groups as the center points are merged. To conclude, `Cluster 1` showed that there is outliers in the data which `requires more evaluation` through `removing outliers` or `Hierachical Clustering` for another unsupervised technique 
+
+```{r include = FALSE}
+library(factoextra)
+```
+
+
+```{r}
+fviz_cluster(kmeans, data = data1)
+```
+

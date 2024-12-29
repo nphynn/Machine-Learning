@@ -1,0 +1,122 @@
+---
+title: "Regression"
+author: "Nick Phynn"
+date: "12/20/2023"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## LINEAR REGRESSION 
+
+Building and train a linear regression regressor using the airquality dataset. RH was set as the target variable, NA values were omitted and the dataset was convered to a table. The following are the steps for analysis:
+(1) Split the data into training and testing resource. 
+(2) Train a Linear Regression Model.
+(3) Capture prediction metrics of the model.
+
+
+```{r include = FALSE}
+library(caret)
+```
+
+The original dataset included 9471 obs and after omitted the NA values (1140), the new dataset included 9357 obs. 
+
+```{r}
+data <- read.csv("airquality.csv")
+str(data)
+sum(is.na(data))
+data1 <- na.omit(data)
+data2 <- data.frame(data1)
+sum(is.na(data2))
+```
+
+Create Test Harnesses: Cross Validation with 10 k-folds and using RSquared as the metric
+
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Rsquared"
+```
+
+Split the Data: 80% split with train =  6552 and valid = 2805 obs. We will use these two datasets to train and test our model.  
+
+```{r}
+split<-createDataPartition(data2$RH, p = 0.7, list = FALSE)
+train<-data2[split,]
+valid<-data2[-split,]
+```
+
+Linear Model: Model includes 6552 samples with 9 predictors and a RSquared value of 0.718
+
+```{r}
+set.seed(7)
+fit.LM <- train(RH~., data = train, method = "lm", trControl=control, metric=metric)
+fit.LM
+```
+
+Prediction: After testing the model with the valid data, the RSquared was 0.725 which is a slight improvement from the linear model results. 
+
+```{r}
+predictedValues<- predict(fit.LM, valid)
+modelvalues<-data.frame(obs = valid$RH, pred = predictedValues)
+postResample(pred = predictedValues, obs = valid$RH)
+```
+
+## LOGISTIC REGRESSION 
+
+Build and train a logistic regression classifier using the airquality dataset. A target variable named class from the RH variable was created with below the mean of RH is a class No and anything greater than the mean is a class yes. The new column was then converted into the appropriate datatype. The following are the steps for analysis:
+(1) Split the data into training and testing resource.
+(2) Train a Logistic Regression Model.
+(3) Capture prediction accuracy of the model, including a confusion matrix.
+
+
+Creating new class column and factor using levels and labels
+
+```{r}
+data2$class <- ifelse(data2$RH < mean(data2$RH), 'No', 'Yes')
+data2$class <- factor(data2$class, levels = c('No','Yes'), labels = c("No","Yes"))
+table(data$class)
+```
+
+Split the Data: 80% split with train =  6552 and valid = 2805 obs. We will use these two datasets to train and test our model.  
+
+```{r}
+index1 <- createDataPartition(data2[,1], p =0.70, list = FALSE)
+training1 = data2[index1,]
+valid1 = data2[-index1,]
+```
+
+Create Test Harnesses: Cross Validation with 10 k-folds and using Accuracy as the metric
+
+```{r}
+control1 <- trainControl(method="cv", number=10)
+metric1 <- "Accuracy"
+```
+
+Logistic Model using Multinom methond and binomial family: Model includes 6552 samples with 10 predictors and a Accuracy value of 0.99 with the optimal decay = 0
+
+```{r echo = FALSE}
+require(LiblineaR)
+```
+
+
+```{r echo = FALSE}
+set.seed(7)
+fit.LR <- train(class~., data = training1, method = "regLogistic", family=binomial(), trControl=control1, metric=metric1)
+```
+
+```{r}
+fit.LR
+```
+
+Prediction: Created a function to grab the class column from the valid dataset to measure against the model. The model has a 99% accuracy and predicted no when its yes only once. 
+
+```{r}
+data.pred1 <- predict(fit.LR, newdata = valid1)
+cm <- confusionMatrix(as.factor(data.pred1), reference = as.factor(valid1$class), mode = "prec_recall")
+print(cm)
+```
+
+

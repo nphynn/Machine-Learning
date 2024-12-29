@@ -1,0 +1,248 @@
+---
+title: 'Assignment: Decision Tree'
+author: "Nick Phynn"
+date: "2023-11-26"
+output: pdf_document
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r include = FALSE}
+#Library Load
+library(caret)
+```
+
+```{r include = FALSE}
+#DataLoad
+data <- read.csv("breast_cancer_dataset.csv")
+str(data)
+sum(is.na(data))
+unique(data$clump_thickness)
+unique(data$uniformity_of_cell_size)
+unique(data$uniformity_of_cell_shape)
+unique(data$marginal_adhesion)
+unique(data$single_epithelial_cell_size)
+unique(data$bare_nuclei)
+unique(data$bland_chromatin)
+unique(data$normal_nucleoli)
+unique(data$mitosis)
+unique(data$class)
+data$class <- factor(data$class)
+```
+
+The class variable will be used as the target varibale to analyze three decision trees using: rpart, rpart2 and rpart1SE. The decision trees will be used to determine which model has the best accuaracy
+
+## Data Splitting & Training
+
+The data set is split and 80% of the original dataset was taken for training. The other 20% will be used to validate the model. Additionally, a test harness was created with a cross-validation of 10 k-fold.
+
+```{r}
+#Splitting of data
+index = createDataPartition(data[,1], p =0.80, list = FALSE) 
+dim(index) 
+```
+
+```{r}
+#Training the data for model evaluation
+training = data[index,] 
+dim(training) 
+```
+
+```{r}
+#Validation Data 
+valid <- data[-index,] 
+dim(valid) 
+```
+
+```{r include = FALSE}
+#Create Test Harnesses 
+control <- trainControl(method="cv", number=10) 
+metric <- "Accuracy" 
+```
+
+## RPART: Decision Tree
+
+```{r}
+#Decision Tree Model
+set.seed(7) 
+fit.rpart <- train(class~., data = training, method ="rpart", metric = metric, trControl = control) 
+```
+
+
+```{r}
+#Decision Tree Results
+fit.rpart 
+```
+
+The RPart model has an accuracy of 0.92
+
+```{r include = FALSE}
+summary(fit.rpart$finalModel)
+suppressMessages(library(rattle)) 
+```
+
+The rpart model shows a distribution of 61/39 for 2/4 respectively with 35% of 4 actually true. 
+
+```{r include}
+#Plot the Model 
+fancyRpartPlot(fit.rpart$finalModel) 
+```
+
+
+## Analysis: Prediction, Error, Confusion Matrix
+
+The table below showed that are 4 false negatives and 7 false positives
+
+```{r}
+#Prediction using Trained Decision Tree 
+data.pred = predict(fit.rpart, newdata = valid) 
+table(data.pred, valid$class) 
+```
+
+There is an error rate of 0
+
+```{r}
+#Checking for Error  
+error.rate <- round(mean(data.pred != valid$class,2)) 
+error.rate 
+```
+
+For rpart confusion matrix, the accurary is 90% 
+
+```{r}
+# Confusion Matrix 
+cm <- confusionMatrix(as.factor(data.pred), reference = as.factor(valid$class), mode = "prec_recall") 
+print(cm) 
+```
+
+
+## RPART2: Decision Tree
+
+```{r}
+#Decision Tree Model
+set.seed(7) 
+fit.rpart2 <- train(class~., data = training, method ="rpart2", metric = metric, trControl = control) 
+```
+
+The RPart2 model has an accuracy of 0.96
+
+```{r}
+#Decision Tree Results
+fit.rpart2 
+```
+
+```{r include = FALSE}
+summary(fit.rpart2$finalModel)
+suppressMessages(library(rattle)) 
+```
+
+The rpart2 model shows a distribution of 61/39 for 2/4 respectively with 57% of 2 actually true and 35% of 4 is true. This is the same as the rpart for 4 expect there is an additional node that provides more information regarding the portion of 4 rhat is false. It is now clear where the error/overlap lies within the two.
+
+```{r}
+#Plot the Model 
+fancyRpartPlot(fit.rpart2$finalModel) 
+```
+
+## Analysis: Prediction, Error, Confusion Matrix
+
+The table below showed that are 4 false negatives and 1 false positives
+
+```{r}
+#Prediction using Trained Decision Tree 
+data.pred1 = predict(fit.rpart2, newdata = valid) 
+table(data.pred1, valid$class) 
+```
+
+There is an error rate of 0
+
+```{r}
+#Checking for Error  
+error.rate <- round(mean(data.pred1 != valid$class,2)) 
+error.rate 
+```
+
+For rpart2 confusion matrix, the accurary is 96% 
+
+```{r}
+# Confusion Matrix 
+cm1 <- confusionMatrix(as.factor(data.pred1), reference = as.factor(valid$class), mode = "prec_recall") 
+print(cm1) 
+```
+
+
+## RPART1SE: Decision Tree
+
+```{r}
+#Decision Tree Model
+set.seed(7) 
+fit.rpartSE <- train(class~., data = training, method ="rpart1SE", metric = metric, trControl = control) 
+```
+
+The RPart1SE model has an accuracy of 0.96
+
+```{r}
+#Decision Tree Results
+fit.rpartSE 
+```
+
+```{r include = FALSE}
+summary(fit.rpartSE$finalModel)
+suppressMessages(library(rattle)) 
+```
+
+The rpart1SE model shows a distribution the same results as the rpart 2. 
+
+```{r}
+#Plot the Model 
+fancyRpartPlot(fit.rpartSE$finalModel) 
+```
+
+## Analysis: Prediction, Error, Confusion Matrix
+
+The table below showed that are 4 false negatives and 1 false positives
+
+```{r}
+#Prediction using Trained Decision Tree 
+data.pred2 = predict(fit.rpartSE, newdata = valid) 
+table(data.pred2, valid$class) 
+```
+
+There is an error rate of 0
+
+```{r}
+#Checking for Error  
+error.rate <- round(mean(data.pred2 != valid$class,2)) 
+error.rate 
+```
+
+For rpart1SE confusion matrix, the accurary is 96% 
+
+```{r}
+# Confusion Matrix 
+cm2 <- confusionMatrix(as.factor(data.pred2), reference = as.factor(valid$class), mode = "prec_recall") 
+print(cm2) 
+```
+
+
+## Decision Tree Model Comparison
+
+For the models comparison, rparrt1SE and rpart2 have identical accuracy. Additionally, both had higher acccuracy compared to rpart.
+
+```{r}
+results <- resamples(list(rpart = fit.rpart, rpart1SE = fit.rpartSE,
+                         rpart2 = fit.rpart2))
+summary(results)
+```
+
+The visual below showed the models with the best Accuracy
+
+```{r}
+dotplot(results)
+```
+

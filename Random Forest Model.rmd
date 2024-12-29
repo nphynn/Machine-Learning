@@ -1,0 +1,134 @@
+---
+title: "Random Forest Lab"
+author: "Nick Phynn"
+date: "12/3/2023"
+output: pdf_document
+---
+
+```{r include = FALSE}
+data <- read.csv("Absenteeism_at_work.csv", sep= ";")
+str(data)
+```
+
+Created a class variable (target variable) named class from the Absenteeism.time.in.hours variable where equal to 0 is a class No and anything greater than 0 is a class yes.
+ 
+```{r}
+data$Absenteeism.time.in.hours = as.numeric(data$Absenteeism.time.in.hours)
+data$class = ifelse(data$Absenteeism.time.in.hours <= 0, 'No', 'Yes')
+data$class = factor(data$class, levels = c('No','Yes'), labels = c("No","Yes"))
+table(data$class)
+```
+
+
+# Required Resources
+
+Load the `caret` library. 
+
+```{r include = FALSE}
+library(caret)
+```
+
+# Modeling
+
+Split the data into your training and testing resources. 
+
+```{r}
+index <- createDataPartition(data$class, p =0.80, list = FALSE)
+training <- data[index,]
+test <- data[-index,]
+```
+
+# Test Harnesses 
+
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+```
+
+# Train the Model with RF . 
+
+
+```{r}
+set.seed(7)
+fit.rf <- train(class~., data = training, method="rf", metric = metric, trControl = control)
+fit.rf
+summary(fit.rf$finalModel)
+```
+
+
+## The accuracy is 99% with a Kappa of 0.98 for all mtry, however mtry = 2 was the best model
+
+```{r}
+plot(fit.rf)
+vi <- varImp(fit.rf, scale = FALSE)
+plot(vi, top = ncol(training)-1)
+```
+
+
+## The predictors are accurate to be used and selected randomly. With Disciplinary.faliure, Absenteeism time in hours and reason for absence the top 3. 
+
+
+```{r}
+data.pred <- predict(fit.rf, newdata = test)
+table(data.pred, test$class)
+error.rate <- round(mean(data.pred != test$class,2))
+error.rate
+cm <- confusionMatrix(as.factor(data.pred), reference = as.factor(test$class), mode = "prec_recall")
+print(cm)
+```
+
+## The table above shows that the data is accurate as the value actually represent the categories (Yes,No) and not predicting a wrong varibale. The error rate was 0 and the accuracy rate was 100%
+
+## RANDOM FORREST USING CRF
+
+```{r include=FALSE}
+require(party)
+```
+
+```{r}
+set.seed(7)
+fit.crf <- train(class~., data = training, method="cforest", metric=metric, trControl=control)
+fit.crf
+summary(fit.crf$finalModel)
+```
+
+## The accuracy is 98% with a Kappa of 0.89 for all mtry, however mtry = 11 was the best model. 
+
+
+```{r}
+plot(fit.crf)
+```
+
+## Only 10-20 predictors are 95% accurate to be randomly selected. 
+
+```{r}
+vi1 <- varImp(fit.crf, scale = FALSE)
+plot(vi1, top = ncol(training)-1)
+```
+
+## Disciplinary.faliure, Absenteeism time in hours and reason for absence the top 3. 
+
+```{r}
+data.pred1 <- predict(fit.crf, newdata = test)
+table(data.pred1, test$class)
+error.rate <- round(mean(data.pred1 != test$class,2))
+error.rate
+cm <- confusionMatrix(as.factor(data.pred1), reference = as.factor(test$class), mode = "prec_recall")
+print(cm)
+```
+
+## The table above shows that the model is actually counting a yes as a no in one case. The error rate was 0 and the accuracy rate was 99%
+
+## MODELS COMPARISON
+
+```{r}
+results <- resamples(list(rf=fit.rf, crf = fit.crf))
+summary(results)
+```
+
+## The above showed that the rf model has a slightly better accuracy compared to crf
+
+```{r}
+dotplot(results)
+```
+

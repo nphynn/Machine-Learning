@@ -1,0 +1,190 @@
+---
+title: "Support Vector Machines"
+author: "Nick Phynn"
+date: "12/20/2024"
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include = FALSE}
+library(caret)
+```
+
+
+```{r include=FALSE}
+data <- read.csv("airquality.csv")
+str(data)
+sum(is.na(data))
+unique(data$RH)
+
+library(tidyr)
+data1 <- 
+  data %>%
+  drop_na()
+sum(is.na(data1))
+str(data1)
+```
+
+
+## A sample of 100 observation from the air quality data set will be used train and predict Support Vector Machines for the best method of accuracy: Linear, Non-Linear, Radial, Poly.
+
+```{r}
+data1$class <- ifelse(data1$RH < mean(data1$RH), 'No', 'Yes')
+data1$class <- factor(data1$class, levels = c('No','Yes'), labels = c("No","Yes"))
+table1 <- table(data1$class)
+realdata <- data1[1:100, ]
+str(realdata)
+```
+
+
+
+Split the data into training and testing resource
+
+```{r}
+index <- createDataPartition(realdata$RH, p =0.70, list = FALSE)
+training <- realdata[index,]
+valid <- realdata[-index,]
+```
+
+
+
+Control harness for prediction
+
+```{r}
+control <- trainControl(method="cv", number=10)
+metric <- "Accuracy"
+```
+
+# LINEAR SVM
+
+
+
+Model Training: Linear SVM model using the binomial family funciton with 72 samples, 10 predictor and 2 classes. The accuracy is 97% and Kappa is 94%
+
+```{r}
+set.seed(7)
+fit.svm <- train(class~., data = training, method = "svmLinear", family=binomial(), trControl=control, metric=metric)
+fit.svm
+```
+
+
+
+
+Model Prediction: The model has an accuracy of 100% and Kappa of 100%. The confusion matrix confirming no false positive or negatives
+
+```{r}
+data.pred <- predict(fit.svm, newdata = valid)
+cm <- confusionMatrix(as.factor(data.pred), reference = as.factor(valid$class), mode = "prec_recall")
+print(cm)
+```
+
+
+
+
+# NON-LINEAR SVM
+
+
+Model Training: Non-Linear SVM model with 72 samples, 10 predictor and 2 classes. The accuracy is 97% and Kappa is 94%
+
+
+
+```{r}
+set.seed(7)
+fit.LR <- train(class~., data = training, method = "svmLinear", trControl=control, metric=metric)
+fit.LR
+```
+
+
+
+
+Model Prediction: The model has an accuracy of 100% and Kappa of 100%. The confusion matrix confirming no false positive or negatives
+
+
+
+```{r}
+data.pred1 <- predict(fit.LR, newdata = valid)
+cm <- confusionMatrix(as.factor(data.pred1), reference = as.factor(valid$class), mode = "prec_recall")
+print(cm)
+```
+
+
+
+
+# RADIAL SVM
+
+
+
+Model Training: Radial SVM model with 72 samples, 10 predictor and 2 classes. The accuracy is 97% and Kappa is 93% with C = 1 the optimal model out of the three predictions
+
+
+
+```{r}
+set.seed(7)
+fit.LogitBoost <- train(class~., data = training, method="svmRadial", metric=metric, trControl=control)
+fit.LogitBoost 
+```
+
+
+
+
+Model Prediction: The model has an accuracy of 96% and Kappa of 92%. The confusion matrix displayed 1 false positives which impacted the prediction
+
+
+```{r}
+data.pred2 <- predict(fit.LogitBoost, newdata = valid)
+cm <- confusionMatrix(as.factor(data.pred2), reference = as.factor(valid$class), mode = "prec_recall")
+print(cm)
+```
+
+
+
+
+
+
+
+# POLY SVM
+
+*Model Training: Poly SVM model with 72 samples, 10 predictor and 2 classes. The accuracy is 97% and Kappa is 92% with the optimal model used were degree = 3, scale = 0.1 and C = 0.5.*
+
+
+
+```{r}
+set.seed(7)
+fit.plr <- train(class~., data = training, method="svmPoly", metric=metric, trControl=control)
+fit.plr 
+```
+
+
+
+
+Model Prediction: The model has an accuracy of 96% and Kappa of 92%. The confusion matrix displayed 1 false negative which impacted the prediction
+
+
+
+```{r}
+data.pred3 <- predict(fit.plr, newdata = valid)
+cm <- confusionMatrix(as.factor(data.pred3), reference = as.factor(valid$class), mode = "prec_recall")
+print(cm)
+```
+
+
+
+
+
+# COMPARE SVM MODELS
+
+
+Linear SVM model had the best mean accuracy (97%) and mean kappa (94%) compared to the other model
+
+
+```{r}
+results <- resamples(list(SVM = fit.svm, LogR = fit.LR, LogitBoost=fit.LogitBoost))
+summary(results)
+dotplot(results)
+```
+
